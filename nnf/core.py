@@ -10,6 +10,9 @@ class NeuralNetwork(object):
         :param layers: array of layers for neural network
         """
         self.layers = layers
+        self.num_epochs = 0
+        self.optimizer = None
+        self.learning_rate = 0.001
         self.__init_default_weights()
 
     def __init_default_weights(self):
@@ -21,9 +24,11 @@ class NeuralNetwork(object):
     def compile(self, **kwargs):
         """
         :param kwargs: num_epochs
-                        optimizer - 'classic'
+                       learning_rate
+                       optimizer - 'classic'
         :return:
         """
+        self.learning_rate = kwargs.get('learning_rate')
         self.optimizer = optimizers.get(kwargs.get('optimizer'))
         self.num_epochs = kwargs.get('num_epochs')
 
@@ -40,7 +45,7 @@ class NeuralNetwork(object):
                 pred_y = self.layers[len(self.layers) - 1].get_output(layer_output)     # output of the neural network
                 real_y = y[input_index]
 
-                self.optimizer.optimize(self.layers, pred_y, real_y)    # optimize weights in neural network
+                self.optimizer.optimize(self.layers, pred_y, real_y, self.learning_rate)    # optimize weights in neural network
 
     def __is_shape_valid(self, x):
         input_shape = self.layers[0].units

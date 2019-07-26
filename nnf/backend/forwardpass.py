@@ -1,11 +1,11 @@
-
+import numpy as np
 
 def get_layer_output(inputs, weights, activation):
     """
     :param inputs: 1D array. Ouput of previous layer
     :param weights: 2D array. All weights connecting this layer to previous layer
     :param activation: activation function of layer
-    :return: 1D array. Output of all nodes
+    :return: 2D array. Output of all nodes (net out and derivation out)
     """
     output = []
 
@@ -13,7 +13,7 @@ def get_layer_output(inputs, weights, activation):
         node_weights = [weights[previous_node_index][node_index] for previous_node_index in range(0, len(inputs))]
         output.append(get_node_output(inputs=inputs, weights=node_weights, activation=activation))
 
-    return output
+    return np.array(output)
 
 
 def get_node_output(inputs, weights, activation):
@@ -27,6 +27,6 @@ def get_node_output(inputs, weights, activation):
     for i in range(0, len(inputs)):
         summary += inputs[i] * weights[i]
 
-    output, _ = activation(summary)
+    output, derivation_out = activation(summary)
 
-    return output
+    return [output, derivation_out]

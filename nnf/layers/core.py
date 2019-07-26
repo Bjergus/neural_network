@@ -14,9 +14,11 @@ class Layer(object):
         self.weights = []
         self.activation = kwargs.get('activation')
         self.units = kwargs.get('units')
+        self.last_full_out = []
+        self.last_input = []
 
-    def set_weight(self, index, weight):
-        self.weights[index] = weight
+    def set_weight(self, previous_node, current_node, weight):
+        self.weights[previous_node][current_node] = weight
 
     def set_weights(self, weights):
         self.weights = weights
@@ -31,6 +33,12 @@ class Layer(object):
         """
         raise NotImplementedError
 
+    def get_last_full_out(self):
+        raise NotImplementedError
+
+    def get_last_input(self):
+        raise NotImplementedError
+
 
 class Dense(Layer):
 
@@ -38,7 +46,16 @@ class Dense(Layer):
         super(Dense, self).__init__(units=units, activation=activations.get(activation))
 
     def get_output(self, input):
-        return forwardpass.get_layer_output(inputs=input, weights=self.weights, activation=self.activation)
+        output = forwardpass.get_layer_output(inputs=input, weights=self.weights, activation=self.activation)
+        self.last_full_out = output
+        self.last_input = input
+        return output[:, 0]     # returns net outputs of layer
+
+    def get_last_full_out(self):
+        return self.last_full_out
+
+    def get_last_input(self):
+        return self.last_input
 
 
 class Input(Layer):

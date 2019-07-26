@@ -6,7 +6,7 @@ nn = NeuralNetwork([
     Dense(units=1, activation='sigmoid')
 ])
 
-nn.compile(optimizer='classic', num_epochs=5)
+nn.compile(optimizer='classic', num_epochs=5, learning_rate=0.01)
 
 train_x = [[255]]
 train_y = [[1]]
