@@ -1,3 +1,3 @@
-from nnf.core import NeuralNetwork
-from nnf.layers.core import Input
-from nnf.layers.core import Dense
+from __future__ import absolute_import
+
+from .core import NeuralNetwork

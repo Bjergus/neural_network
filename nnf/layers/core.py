@@ -1,71 +1,74 @@
-from nnf import activations
-from nnf.backend import forwardpass
+from __future__ import absolute_import
+from .structure import Neuron
+from nnf.exception import BadShapeException
 
 
 class Layer(object):
 
-    def __init__(self, **kwargs):
-        """
-        weights: list of weight connected this layer with l-1
-        :param kwargs:
-            activation = activation function
-            units = number of units
-        """
-        self.weights = []
-        self.activation = kwargs.get('activation')
-        self.units = kwargs.get('units')
-        self.last_full_out = []
-        self.last_input = []
-
-    def set_weight(self, previous_node, current_node, weight):
-        self.weights[previous_node][current_node] = weight
-
-    def set_weights(self, weights):
-        self.weights = weights
-
-    def get_weights(self):
-        return self.weights
-
-    def get_output(self, input):
-        """
-        :param input: list of values of l-1
-        :return: output for each node of layer
-        """
+    def feed_forward(self, inputs):
         raise NotImplementedError
 
-    def get_last_full_out(self):
+    def inspect(self):
         raise NotImplementedError
 
-    def get_last_input(self):
+    def get_output(self):
         raise NotImplementedError
+
+
+class Input(Layer):
+
+    def __init__(self, units):
+        self.units = units
+        self.output = []
+
+    def feed_forward(self, inputs):
+        if len(inputs) != self.units:
+            raise BadShapeException()
+        self.output = inputs
+        return inputs
+
+    def inspect(self):
+        print('Input layer: '+ str(self.units) + ' neurons')
+
+    def get_output(self):
+        return self.output
 
 
 class Dense(Layer):
 
     def __init__(self, units, activation):
-        super(Dense, self).__init__(units=units, activation=activations.get(activation))
+        self.activation = activation
+        self.nodes = []
+        for i in range(0, units):
+            self.nodes.append(Neuron(activation=activation))
 
-    def get_output(self, input):
-        output = forwardpass.get_layer_output(inputs=input, weights=self.weights, activation=self.activation)
-        self.last_full_out = output
-        self.last_input = input
-        return output[:, 0]     # returns net outputs of layer
+    def feed_forward(self, inputs):
+        output = []
 
-    def get_last_full_out(self):
-        return self.last_full_out
+        for i in range(0, len(self.nodes)):
+            output.append(self.nodes[i].calculate_output(inputs))
 
-    def get_last_input(self):
-        return self.last_input
+        return output
 
+    def get_output(self):
+        """
+        :return: last output of neural layer
+        """
+        output = []
 
-class Input(Layer):
+        for i in range(0, len(self.nodes)):
+            output.append(self.nodes[i].output)
 
-    def __init__(self, units, activation):
-        super(Input, self).__init__(units=units, activation=activations.get(activation))
+        return output
 
-    def get_output(self, input):
-        out = []
-        for i in range(0, self.units):
-            output, _ = self.activation(input[i])
-            out.append(output)
-        return out
+    def inspect(self, print__weights=True):
+        print('Neurons: ' + str(len(self.nodes)))
+        print('Activation function: ' + self.activation.__name__)
+        if print__weights:
+            print('----------------')
+            for i in range(0, len(self.nodes)):
+                print('Neuron (' + str(i) + ')')
+                for w in range(0, len(self.nodes[i].weights)):
+                    print('Weight (' + str(w) + '): ' + str(self.nodes[i].weights[w]))
+        print('+++++++++++++++++++++++++')
+

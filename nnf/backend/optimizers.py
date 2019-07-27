@@ -1,72 +1,59 @@
-from nnf.ui import informator
+"""
+ pd => partial derivation
+ wrt => with respect to
+"""
 
 
-def get(optimizer):
-    if optimizer == 'classic':
-        return ClassicOptimizer()
+def get_optimizer(name, learning_rate=0.01):
+    if name == 'standard':
+        return StandardOptimizer(learning_rate=learning_rate)
     else:
         raise NotImplementedError
 
 
 class Optimizer(object):
 
-    def optimize(self, layers, predicted_y, real_y, learning_rate):
+    def __init__(self, learning_rate):
+        self.learning_rate = learning_rate
+
+    def optimize(self, layers, pred_y, real_y):
         raise NotImplementedError
 
 
-class ClassicOptimizer(Optimizer):
+class StandardOptimizer(Optimizer):
 
-    def optimize(self, layers, predicted_y, real_y, learning_rate):
-        self.__optimize_output_layer(layer=layers[len(layers) - 1], predicted_y=predicted_y,
-                                     real_y=real_y, learning_rate=learning_rate)
+    def optimize(self, layers, pred_y, real_y):
+        total_error = self.__calculate_total_error(pred_y, real_y)
 
-    def __optimize_output_layer(self, layer, predicted_y, real_y, learning_rate):
-        """
-        EQUATION: ∂Etotal/∂wx = ∂Etotal/∂outx * ∂outx/∂netx * ∂netx/∂wx
-        :param layer:
-        :param predicted_y:
-        :param real_y:
-        :return: new weights for output layer
-        """
-        Etotal = self.__get_total_error(predicted_y=predicted_y, real_y=real_y)
-        # ∂Etotal/∂outx (Errors for all output nodes)
-        errors = self.__get_output_errors(predicted_y=predicted_y, real_y=real_y)
-        # ∂outx/∂netx
-        activation_derivate = layer.get_last_full_out()[:, 1]
-        # CALCULATE NEW WEIGHT VALUE
-        # ∂netx/∂wx
-        last_input = layer.get_last_input()
-        for current_node_index in range(0, layer.units):
-            for previous_node_index in range(0, len(layer.weights)):
-                out_previous_node = last_input[previous_node_index]
-                # ∂Etotal/∂wx
-                ETotal_wx = errors[current_node_index] * activation_derivate[current_node_index] * out_previous_node
 
-                old_weight = layer.weights[previous_node_index][current_node_index]
-                new_weight = old_weight - learning_rate * ETotal_wx
 
-                layer.set_weight(previous_node_index, current_node_index, new_weight)
+        return total_error
 
-        informator.add_total_error(error=Etotal)
+    def __optimizer_output_layer(self, layer, pred_y, real_y):
+        pd_etotal_wrt_out = [self.__calculate_pd_etotal_wrt_out(pred_y[i], real_y[i]) for i in range(0, len(layer.nodes))]
 
-    def __get_total_error(self, predicted_y, real_y):
-        total = 0
+        self.__optimize_layer(layer, pd_etotal_wrt_out)
 
-        for i in range(0, len(predicted_y)):
-            total += 0.5 * (real_y[i] - predicted_y[i])
+    def __optimize_layer(self, layer,  pd_etotal_wrt_out):
+        pd_out_wrt_net = []
+        for i in range(0, len(layer.nodes)):
 
-        return total
+            pd_out_wrt_net.append(layer.nodes[i].calculate_output_wrt_net())
+            for weight_index in range(0, len(layer.nodes[i].weights)):
+                node = layer.nodes[i]
+                weight = node.weights[weight_index]
+                pd_net_wrt_w = node.calculate_net_wrt_weight(weight_index)
+                pd_etotal_wrt_w = pd_net_wrt_w * pd_etotal_wrt_out[i] * pd_out_wrt_net[i]
 
-    def __get_output_errors(self, predicted_y, real_y):
-        # By applying chain rule on loss function we get this equation
-        # -(target - out)
-        errors = []
+                node.weights[weight_index] = weight - self.learning_rate * pd_etotal_wrt_w
 
-        for i in range(0, len(predicted_y)):
-            error = - (real_y[i] - predicted_y[i])
-            errors.append(error)
+    def __calculate_pd_etotal_wrt_out(self, pred_y, real_y):
+        return - (real_y - pred_y)
 
-        return errors
+    def __calculate_total_error(self, pred_y, real_y):
+        total_error = 0
 
-    def __optimize_layer(self, weights, activation, error):
-        pass
+        for i in range(0, len(pred_y)):
+            total_error += 0.5 * (real_y - pred_y) ** 2
+
+        return total_error
