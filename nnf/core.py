@@ -24,7 +24,7 @@ class NeuralNetwork(object):
         output = inputs
 
         for i in range(0, len(self.layers)):
-            output = self.layers[i].feed_forward()
+            output = self.layers[i].feed_forward(inputs)
 
         return output
 

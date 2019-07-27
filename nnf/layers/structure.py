@@ -29,6 +29,20 @@ class Neuron(object):
         """
         return self.inputs[index]
 
+    # Determine how much the neuron's total input has to change to move closer to the expected output
+    #
+    # Now that we have the partial derivative of the error with respect to the output (∂E/∂yⱼ) and
+    # the derivative of the output with respect to the total net input (dyⱼ/dzⱼ) we can calculate
+    # the partial derivative of the error with respect to the total net input.
+    # This value is also known as the delta (δ) [1]
+    # δ = ∂E/∂zⱼ = ∂E/∂yⱼ * dyⱼ/dzⱼ
+    def __calculate_pd_error_wrt_net_input(self, target_uotput):
+        return self.__calculate_pd_error_wrt_output(target_uotput) * self.calculate_output_wrt_net()
+
+    # ∂E /∂yⱼ = -(tⱼ - yⱼ)
+    def __calculate_pd_error_wrt_output(self, target_output):
+        return - (target_output - self.output)
+
     def __calculate_net_input(self):
         net_input = 0
 

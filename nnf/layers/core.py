@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from .structure import Neuron
 from nnf.exception import BadShapeException
+from nnf import activations
 
 
 class Layer(object):
@@ -20,6 +21,7 @@ class Input(Layer):
     def __init__(self, units):
         self.units = units
         self.output = []
+        self.nodes = [None for i in range(0, units)]
 
     def feed_forward(self, inputs):
         if len(inputs) != self.units:
@@ -37,10 +39,10 @@ class Input(Layer):
 class Dense(Layer):
 
     def __init__(self, units, activation):
-        self.activation = activation
+        self.activation = activations.get(activation)
         self.nodes = []
         for i in range(0, units):
-            self.nodes.append(Neuron(activation=activation))
+            self.nodes.append(Neuron(activation=self.activation))
 
     def feed_forward(self, inputs):
         output = []

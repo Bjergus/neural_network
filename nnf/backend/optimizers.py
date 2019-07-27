@@ -24,28 +24,54 @@ class StandardOptimizer(Optimizer):
 
     def optimize(self, layers, pred_y, real_y):
         total_error = self.__calculate_total_error(pred_y, real_y)
-
-
+        output_deltas = self.__optimizer_output_layer(layers[-1], real_y)
+        self.__optimize_hidden_layers(self.__get_hidden_layers(layers), output_deltas, layers[-1])
 
         return total_error
 
-    def __optimizer_output_layer(self, layer, pred_y, real_y):
-        pd_etotal_wrt_out = [self.__calculate_pd_etotal_wrt_out(pred_y[i], real_y[i]) for i in range(0, len(layer.nodes))]
+    def __optimizer_output_layer(self, layer, real_y):
+        # calculate delta of output layer
+        pd_errors_wrt_output_neuron_net_input = [0] * len(layer.nodes)
 
-        self.__optimize_layer(layer, pd_etotal_wrt_out)
-
-    def __optimize_layer(self, layer,  pd_etotal_wrt_out):
-        pd_out_wrt_net = []
         for i in range(0, len(layer.nodes)):
+            # ∂E/∂zⱼ
+            pd_errors_wrt_output_neuron_net_input[i] = layer.nodes[i]\
+                .__calculate_pd_error_wrt_total_net_input(real_y)
 
-            pd_out_wrt_net.append(layer.nodes[i].calculate_output_wrt_net())
-            for weight_index in range(0, len(layer.nodes[i].weights)):
-                node = layer.nodes[i]
-                weight = node.weights[weight_index]
-                pd_net_wrt_w = node.calculate_net_wrt_weight(weight_index)
-                pd_etotal_wrt_w = pd_net_wrt_w * pd_etotal_wrt_out[i] * pd_out_wrt_net[i]
+        # Update output neuron weights
+        for o in range(len(layer.nodes)):
+            for w in range(len(layer.nodes[o].weights)):
+                # ∂Eⱼ/∂wᵢⱼ = ∂E/∂zⱼ * ∂zⱼ/∂wᵢ
+                pd_error_wrt_weight = pd_errors_wrt_output_neuron_net_input[o] * layer.nodes[
+                    o].calculate_pd_total_net_input_wrt_weight(w)
 
-                node.weights[weight_index] = weight - self.learning_rate * pd_etotal_wrt_w
+                # Δw = α * ∂Eⱼ/∂wᵢ
+                layer.nodes[o].weights[w] -= self.learning_rate * pd_error_wrt_weight
+
+        return pd_errors_wrt_output_neuron_net_input
+
+    def __optimize_hidden_layers(self, layers, output_deltas, output_layer):
+        pd_errors_wrt_hidden_neuron_total_net_input = []
+        for i in range(len(layers)):
+            pd_errors_wrt_hidden_neuron_total_net_input = [[0] * len(
+                layers[-1 - i].nodes)] + pd_errors_wrt_hidden_neuron_total_net_input
+            for j in range(len(layers[-1 - i].nodes)):
+                # We need to calculate the derivative of the error with respect to the output of each hidden layer neuron
+                # dE/dyⱼ = Σ ∂E/∂zⱼ * ∂z/∂yⱼ = Σ ∂E/∂zⱼ * wᵢⱼ
+                d_error_wrt_hidden_neuron_output = 0
+                if i == 0:
+                    for o in range(len(output_layer)): # for each node in output layer
+                        d_error_wrt_hidden_neuron_output += output_deltas[o] * output_layer.nodes[o].weights[j]
+                else:
+                    for o in range(len(layers[-i].nodes)):
+                        d_error_wrt_hidden_neuron_output += pd_errors_wrt_hidden_neuron_total_net_input[1][o] * layers[-i].nodes[o].weights[j]
+
+                # ∂E /∂zⱼ = dE / dyⱼ * ∂zⱼ /∂
+                pd_errors_wrt_hidden_neuron_total_net_input[0][j] = d_error_wrt_hidden_neuron_output * \
+                                                                    layers[-i - 1].neurons[
+                                                                        j].calculate_pd_total_net_input_wrt_input()
+                # TODO: UPDATE WEIGHTS
+            return pd_errors_wrt_hidden_neuron_total_net_input
 
     def __calculate_pd_etotal_wrt_out(self, pred_y, real_y):
         return - (real_y - pred_y)
@@ -54,6 +80,12 @@ class StandardOptimizer(Optimizer):
         total_error = 0
 
         for i in range(0, len(pred_y)):
-            total_error += 0.5 * (real_y - pred_y) ** 2
+            total_error += 0.5 * (real_y[i] - pred_y[i]) ** 2
 
         return total_error
+
+    def __get_hidden_layers(self, layers):
+        hidden = []
+        for i in range(1, len(layers) - 1):
+            hidden.append(layers[i])
+        return hidden
